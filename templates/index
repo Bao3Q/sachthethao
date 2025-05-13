@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Game Tài Xỉu</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Game Tài Xỉu</h1>
+        <div>
+            <button onclick="play('Tài')">Đặt Tài</button>
+            <button onclick="play('Xỉu')">Đặt Xỉu</button>
+        </div>
+        <div id="result"></div>
+        <div id="history" style="margin-top:30px;"></div>
+    </div>
+    <script>
+        function diceToEmoji(num) {
+            const emojis = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+            return emojis[num-1] || '?';
+        }
+        function play(bet) {
+            fetch('/play', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({bet: bet})
+            })
+            .then(response => response.json())
+            .then(data => {
+                const diceEmojis = data.dice.map(diceToEmoji).join(' ');
+                const resultHtml =
+                    `<div style='font-size:40px;'>${diceEmojis}</div>
+                     <p>Tổng: <b>${data.total}</b> - <b>${data.result}</b></p>
+                     <p style='color:${data.win ? 'green' : 'red'};font-weight:bold;'>${data.win ? 'Bạn thắng!' : 'Bạn thua!'}</p>`;
+                document.getElementById('result').innerHTML = resultHtml;
+                // Lưu lịch sử
+                let history = JSON.parse(localStorage.getItem('taixiu_history') || '[]');
+                history.unshift({dice: data.dice, total: data.total, result: data.result, win: data.win});
+                if(history.length > 10) history = history.slice(0,10);
+                localStorage.setItem('taixiu_history', JSON.stringify(history));
+                renderHistory();
+            });
+        }
+        function renderHistory() {
+            let history = JSON.parse(localStorage.getItem('taixiu_history') || '[]');
+            if(history.length === 0) {
+                document.getElementById('history').innerHTML = '';
+                return;
+            }
+            let html = '<h3>Lịch sử</h3><table style="width:100%;border-collapse:collapse;">';
+            html += '<tr><th>Xúc xắc</th><th>Tổng</th><th>Kết quả</th><th>Thắng?</th></tr>';
+            for(const h of history) {
+                html += `<tr>
+                    <td style='font-size:24px;'>${h.dice.map(diceToEmoji).join(' ')}</td>
+                    <td>${h.total}</td>
+                    <td>${h.result}</td>
+                    <td style='color:${h.win ? 'green' : 'red'};'>${h.win ? '✔️' : '❌'}</td>
+                </tr>`;
+            }
+            html += '</table>';
+            document.getElementById('history').innerHTML = html;
+        }
+        window.onload = renderHistory;
+    </script>
+</body>
+</html>
